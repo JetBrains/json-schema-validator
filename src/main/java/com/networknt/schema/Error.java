@@ -155,6 +155,87 @@ public class Error {
         return (Integer) getDetails().get("index");
     }
 
+    /**
+     * Returns all property names defined in the schema's "properties" keyword.
+     * <p>
+     * This is useful for IDE integrations that need to suggest valid property names
+     * for quick fixes (e.g., "did you mean..." suggestions).
+     *
+     * @return list of property names from schema, or empty list if not available
+     */
+    public java.util.List<String> getSchemaPropertyNames() {
+        if (schemaNode == null) {
+            return java.util.Collections.emptyList();
+        }
+        JsonNode properties = schemaNode.get("properties");
+        if (properties == null || !properties.isObject()) {
+            return java.util.Collections.emptyList();
+        }
+        java.util.List<String> result = new java.util.ArrayList<>();
+        java.util.Iterator<java.util.Map.Entry<String, JsonNode>> fields = properties.properties().iterator();
+        while (fields.hasNext()) {
+            result.add(fields.next().getKey());
+        }
+        return result;
+    }
+
+    /**
+     * Returns the expected types from the schema's "type" keyword.
+     * <p>
+     * The type field can be either a string (single type) or an array (union type).
+     * This method normalizes both cases into a list.
+     * <p>
+     * Example schemas:
+     * - {"type": "string"} → ["string"]
+     * - {"type": ["string", "number"]} → ["string", "number"]
+     *
+     * @return list of expected type names, or empty list if not available
+     */
+    public java.util.List<String> getExpectedTypes() {
+        if (schemaNode == null) {
+            return java.util.Collections.emptyList();
+        }
+        JsonNode typeNode = schemaNode.get("type");
+        if (typeNode == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        java.util.List<String> result = new java.util.ArrayList<>();
+        if (typeNode.isTextual()) {
+            // Single type: {"type": "string"}
+            result.add(typeNode.asText());
+        } else if (typeNode.isArray()) {
+            // Union type: {"type": ["string", "number"]}
+            for (JsonNode element : typeNode) {
+                if (element.isTextual()) {
+                    result.add(element.asText());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns the schema node for a specific property.
+     * <p>
+     * This retrieves the schema from schemaNode.get("properties").get(propertyName).
+     * Useful for IDE integrations that need to inspect the schema of individual properties
+     * (e.g., to generate quick fixes based on property-level constraints).
+     *
+     * @param propertyName the property name to look up
+     * @return the schema node for the property, or null if not found
+     */
+    public JsonNode getPropertySchema(String propertyName) {
+        if (schemaNode == null || propertyName == null) {
+            return null;
+        }
+        JsonNode properties = schemaNode.get("properties");
+        if (properties == null || !properties.isObject()) {
+            return null;
+        }
+        return properties.get(propertyName);
+    }
+
     public Object[] getArguments() {
         return arguments;
     }

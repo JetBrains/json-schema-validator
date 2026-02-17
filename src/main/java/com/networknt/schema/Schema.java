@@ -619,6 +619,9 @@ public class Schema implements Validator {
         try {
             int currentErrors = executionContext.getErrors().size();
             for (KeywordValidator v : validators) {
+                // Check for cancellation before each keyword validation
+                executionContext.checkCancelled();
+
                 executionContext.evaluationPathAddLast(v.getKeyword());
                 executionContext.evaluationSchemaPath.addLast(v.getKeyword());
                 try {
@@ -1566,6 +1569,9 @@ public class Schema implements Validator {
         try {
             int currentErrors = executionContext.getErrors().size();
             for (KeywordValidator validator : validators) {
+                // Check for cancellation before each keyword validation
+                executionContext.checkCancelled();
+
                 try {
                     // Call all the pre-walk listeners. If at least one of the pre walk listeners
                     // returns SKIP, then skip the walk.

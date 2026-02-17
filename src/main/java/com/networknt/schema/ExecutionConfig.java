@@ -75,9 +75,15 @@ public class ExecutionConfig {
      */
     private final Boolean writeOnly;
 
+    /**
+     * Optional callback to check if validation should be cancelled.
+     * Called before each keyword validator executes.
+     */
+    private final CancellationChecker cancellationChecker;
+
     protected ExecutionConfig(Locale locale, boolean annotationCollectionEnabled,
             Predicate<String> annotationCollectionFilter, Boolean formatAssertionsEnabled, boolean failFast,
-            Boolean readOnly, Boolean writeOnly) {
+            Boolean readOnly, Boolean writeOnly, CancellationChecker cancellationChecker) {
         super();
         this.locale = locale;
         this.annotationCollectionEnabled = annotationCollectionEnabled;
@@ -86,6 +92,7 @@ public class ExecutionConfig {
         this.failFast = failFast;
         this.readOnly = readOnly;
         this.writeOnly = writeOnly;
+        this.cancellationChecker = cancellationChecker;
     }
 
     /**
@@ -172,6 +179,15 @@ public class ExecutionConfig {
         return this.writeOnly;
     }
 
+    /**
+     * Returns the cancellation checker callback.
+     *
+     * @return the cancellation checker or null if not set
+     */
+    public CancellationChecker getCancellationChecker() {
+        return this.cancellationChecker;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -185,6 +201,7 @@ public class ExecutionConfig {
         copy.failFast = config.failFast;
         copy.readOnly = config.readOnly;
         copy.writeOnly = config.writeOnly;
+        copy.cancellationChecker = config.cancellationChecker;
         return copy;
     }
 
@@ -210,6 +227,7 @@ public class ExecutionConfig {
         protected boolean failFast = false;
         protected Boolean readOnly = null;
         protected Boolean writeOnly = null;
+        protected CancellationChecker cancellationChecker = null;
 
         protected abstract T self();
 
@@ -292,8 +310,19 @@ public class ExecutionConfig {
         }
 
         /**
+         * Sets the cancellation checker callback.
+         *
+         * @param cancellationChecker the cancellation checker
+         * @return the builder
+         */
+        public T cancellationChecker(CancellationChecker cancellationChecker) {
+            this.cancellationChecker = cancellationChecker;
+            return self();
+        }
+
+        /**
          * Builds the {@link ExecutionConfig}.
-         * 
+         *
          * @return the execution configuration
          */
         public ExecutionConfig build() {
@@ -303,7 +332,7 @@ public class ExecutionConfig {
             }
             Objects.requireNonNull(annotationCollectionFilter, "annotationCollectionFilter must not be null");
             return new ExecutionConfig(locale, annotationCollectionEnabled, annotationCollectionFilter,
-                    formatAssertionsEnabled, failFast, readOnly, writeOnly);
+                    formatAssertionsEnabled, failFast, readOnly, writeOnly, cancellationChecker);
         }
     }
 }

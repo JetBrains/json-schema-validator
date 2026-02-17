@@ -211,11 +211,24 @@ public class ExecutionContext {
     /**
      * Sets if the validator should immediately throw a fail fast exception if an
      * error has occurred.
-     * 
+     *
      * @param failFast true to fail fast
      */
     public void setFailFast(boolean failFast) {
         this.failFast = failFast;
+    }
+
+    /**
+     * Check if validation should be cancelled by calling the cancellation checker.
+     * <p>
+     * This should be called periodically during validation to support cooperative
+     * cancellation.
+     */
+    public void checkCancelled() {
+        CancellationChecker checker = getExecutionConfig().getCancellationChecker();
+        if (checker != null) {
+            checker.check();
+        }
     }
 
     public List<Error> getErrors() {
