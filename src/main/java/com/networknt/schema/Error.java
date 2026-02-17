@@ -60,10 +60,12 @@ public class Error {
     private final Map<String, Object> details;
     private final JsonNode instanceNode;
     private final JsonNode schemaNode;
+    private final JsonNode parentSchemaNode;
 
     Error(String keyword, NodePath evaluationPath, SchemaLocation schemaLocation,
             NodePath instanceLocation, Object[] arguments, Map<String, Object> details,
-            String messageKey, Supplier<String> messageSupplier, JsonNode instanceNode, JsonNode schemaNode) {
+            String messageKey, Supplier<String> messageSupplier, JsonNode instanceNode, JsonNode schemaNode,
+            JsonNode parentSchemaNode) {
         super();
         this.keyword = keyword;
         this.instanceLocation = instanceLocation;
@@ -75,6 +77,7 @@ public class Error {
         this.messageSupplier = messageSupplier;
         this.instanceNode = instanceNode;
         this.schemaNode = schemaNode;
+        this.parentSchemaNode = parentSchemaNode;
     }
 
     /**
@@ -164,10 +167,12 @@ public class Error {
      * @return list of property names from schema, or empty list if not available
      */
     public java.util.List<String> getSchemaPropertyNames() {
-        if (schemaNode == null) {
+        // parentSchemaNode is the full schema object containing "properties"
+        JsonNode source = parentSchemaNode != null ? parentSchemaNode : schemaNode;
+        if (source == null) {
             return java.util.Collections.emptyList();
         }
-        JsonNode properties = schemaNode.get("properties");
+        JsonNode properties = source.get("properties");
         if (properties == null || !properties.isObject()) {
             return java.util.Collections.emptyList();
         }
@@ -192,27 +197,40 @@ public class Error {
      * @return list of expected type names, or empty list if not available
      */
     public java.util.List<String> getExpectedTypes() {
-        if (schemaNode == null) {
-            return java.util.Collections.emptyList();
-        }
-        JsonNode typeNode = schemaNode.get("type");
-        if (typeNode == null) {
-            return java.util.Collections.emptyList();
-        }
-
-        java.util.List<String> result = new java.util.ArrayList<>();
-        if (typeNode.isTextual()) {
-            // Single type: {"type": "string"}
-            result.add(typeNode.asText());
-        } else if (typeNode.isArray()) {
-            // Union type: {"type": ["string", "number"]}
-            for (JsonNode element : typeNode) {
-                if (element.isTextual()) {
-                    result.add(element.asText());
+        // For type errors, schemaNode is the keyword-level value (e.g., "string" or ["string", "number"])
+        if (schemaNode != null) {
+            java.util.List<String> result = new java.util.ArrayList<>();
+            if (schemaNode.isTextual()) {
+                result.add(schemaNode.asText());
+            } else if (schemaNode.isArray()) {
+                for (JsonNode element : schemaNode) {
+                    if (element.isTextual()) {
+                        result.add(element.asText());
+                    }
                 }
             }
+            if (!result.isEmpty()) {
+                return result;
+            }
         }
-        return result;
+        // Fallback: check parentSchemaNode for "type" field
+        if (parentSchemaNode != null) {
+            JsonNode typeNode = parentSchemaNode.get("type");
+            if (typeNode != null) {
+                java.util.List<String> result = new java.util.ArrayList<>();
+                if (typeNode.isTextual()) {
+                    result.add(typeNode.asText());
+                } else if (typeNode.isArray()) {
+                    for (JsonNode element : typeNode) {
+                        if (element.isTextual()) {
+                            result.add(element.asText());
+                        }
+                    }
+                }
+                return result;
+            }
+        }
+        return java.util.Collections.emptyList();
     }
 
     /**
@@ -226,10 +244,15 @@ public class Error {
      * @return the schema node for the property, or null if not found
      */
     public JsonNode getPropertySchema(String propertyName) {
-        if (schemaNode == null || propertyName == null) {
+        if (propertyName == null) {
             return null;
         }
-        JsonNode properties = schemaNode.get("properties");
+        // parentSchemaNode is the full schema object containing "properties"
+        JsonNode source = parentSchemaNode != null ? parentSchemaNode : schemaNode;
+        if (source == null) {
+            return null;
+        }
+        JsonNode properties = source.get("properties");
         if (properties == null || !properties.isObject()) {
             return null;
         }
@@ -329,6 +352,7 @@ public class Error {
         protected String messageKey;
         protected JsonNode instanceNode;
         protected JsonNode schemaNode;
+        protected JsonNode parentSchemaNode;
 
         public S keyword(String keyword) {
             this.keyword = keyword;
@@ -444,6 +468,11 @@ public class Error {
             return self();
         }
 
+        public S parentSchemaNode(JsonNode parentSchemaNode) {
+            this.parentSchemaNode = parentSchemaNode;
+            return self();
+        }
+
         public Error build() {
             Supplier<String> messageSupplier = this.messageSupplier;
             String messageKey = this.messageKey;
@@ -465,7 +494,8 @@ public class Error {
                 });
             }
             return new Error(keyword, evaluationPath, schemaLocation, instanceLocation,
-                    arguments, details, messageKey, messageSupplier, this.instanceNode, this.schemaNode);
+                    arguments, details, messageKey, messageSupplier, this.instanceNode, this.schemaNode,
+                    this.parentSchemaNode);
         }
 
         protected Object[] getMessageArguments() {

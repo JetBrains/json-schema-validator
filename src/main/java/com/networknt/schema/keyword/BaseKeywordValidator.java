@@ -113,6 +113,7 @@ public abstract class BaseKeywordValidator extends AbstractKeywordValidator {
         return MessageSourceError
                 .builder(this.schemaContext.getSchemaRegistryConfig().getMessageSource(), this.errorMessage)
                 .schemaNode(this.schemaNode).schemaLocation(this.schemaLocation)
+                .parentSchemaNode(this.parentSchema != null ? this.parentSchema.getSchemaNode() : null)
                 .keyword(this.getKeyword()).messageKey(this.getKeyword());
     }
 }
