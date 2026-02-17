@@ -804,6 +804,18 @@ public class SchemaRegistry {
     }
 
     /**
+     * Validates a JSON instance against a schema, both provided as strings.
+     *
+     * @param schemaContent  the schema as a JSON string
+     * @param instanceContent the instance to validate as a JSON string
+     * @return the list of validation errors (empty if valid)
+     */
+    public List<Error> validate(String schemaContent, String instanceContent) {
+        Schema schema = getSchema(schemaContent);
+        return schema.validate(instanceContent, InputFormat.JSON);
+    }
+
+    /**
      * Gets the schema registry config.
      *
      * @return the schema registry config
