@@ -19,8 +19,10 @@ package com.networknt.schema;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.networknt.schema.annotation.Annotations;
@@ -286,5 +288,24 @@ public class ExecutionContext {
     
     public void setUnevaluatedItemsPresent(boolean set) {
         this.unevaluatedItemsPresent = set;
+    }
+
+    private Set<String> activeRefPairs = null;
+
+    public Set<String> getActiveRefPairs() {
+        if (this.activeRefPairs == null) {
+            this.activeRefPairs = new HashSet<>();
+        }
+        return this.activeRefPairs;
+    }
+
+    private int refDepth = 0;
+
+    public int incrementRefDepth() {
+        return ++this.refDepth;
+    }
+
+    public void decrementRefDepth() {
+        --this.refDepth;
     }
 }

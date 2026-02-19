@@ -30,6 +30,7 @@ import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaContext;
 
 import java.util.Iterator;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -182,7 +183,7 @@ public class RefValidator extends BaseKeywordValidator {
 
     @Override
     public void validate(ExecutionContext executionContext, JsonNode node, JsonNode rootNode, NodePath instanceLocation) {
-        
+
         Schema refSchema = this.schema.getSchema();
         if (refSchema == null) {
             Error error = error().keyword(KeywordType.REF.getValue())
@@ -191,7 +192,22 @@ public class RefValidator extends BaseKeywordValidator {
                     .arguments(schemaNode.asString()).build();
             throw new InvalidSchemaRefException(error);
         }
-        refSchema.validate(executionContext, node, rootNode, instanceLocation);
+        if (executionContext.incrementRefDepth() > 1000) {
+            executionContext.decrementRefDepth();
+            return;
+        }
+        String key = refSchema.getSchemaLocation().toString() + "|" + instanceLocation.toString();
+        Set<String> active = executionContext.getActiveRefPairs();
+        if (!active.add(key)) {
+            executionContext.decrementRefDepth();
+            return;
+        }
+        try {
+            refSchema.validate(executionContext, node, rootNode, instanceLocation);
+        } finally {
+            active.remove(key);
+            executionContext.decrementRefDepth();
+        }
     }
 
     @Override

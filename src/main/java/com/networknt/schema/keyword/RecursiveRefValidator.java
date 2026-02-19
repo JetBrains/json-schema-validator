@@ -28,6 +28,7 @@ import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaContext;
 
 import java.util.Iterator;
+import java.util.Set;
 
 /**
  * {@link KeywordValidator} that resolves $recursiveRef.
@@ -85,7 +86,22 @@ public class RecursiveRefValidator extends BaseKeywordValidator {
                     .arguments(schemaNode.toString()).build();
             throw new InvalidSchemaRefException(error);
         }
-         refSchema.validate(executionContext, node, rootNode, instanceLocation);
+        if (executionContext.incrementRefDepth() > 1000) {
+            executionContext.decrementRefDepth();
+            return;
+        }
+        String key = refSchema.getSchemaLocation().toString() + "|" + instanceLocation.toString();
+        Set<String> active = executionContext.getActiveRefPairs();
+        if (!active.add(key)) {
+            executionContext.decrementRefDepth();
+            return;
+        }
+        try {
+            refSchema.validate(executionContext, node, rootNode, instanceLocation);
+        } finally {
+            active.remove(key);
+            executionContext.decrementRefDepth();
+        }
     }
 
     @Override
