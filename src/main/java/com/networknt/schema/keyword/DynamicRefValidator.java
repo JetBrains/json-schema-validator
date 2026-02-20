@@ -19,8 +19,8 @@ package com.networknt.schema.keyword;
 import tools.jackson.databind.JsonNode;
 import com.networknt.schema.Error;
 import com.networknt.schema.ExecutionContext;
-import com.networknt.schema.InvalidSchemaRefException;
 import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaException;
 import com.networknt.schema.SchemaRef;
 import com.networknt.schema.path.NodePath;
 import com.networknt.schema.utils.ThreadSafeCachingSupplier;
@@ -92,13 +92,30 @@ public class DynamicRefValidator extends BaseKeywordValidator {
 
     @Override
     public void validate(ExecutionContext executionContext, JsonNode node, JsonNode rootNode, NodePath instanceLocation) {
-        Schema refSchema = getSchemaRef(executionContext).getSchema();
+        Schema refSchema;
+        try {
+            refSchema = getSchemaRef(executionContext).getSchema();
+        } catch (SchemaException e) {
+            // IJPL-737: Treat $dynamicRef resolution failure as a validation error, not a fatal exception.
+            Error error = e.getError();
+            if (error != null) {
+                executionContext.addError(error);
+            } else {
+                executionContext.addError(error().keyword(KeywordType.DYNAMIC_REF.getValue())
+                        .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
+                        .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
+                        .arguments(schemaNode.asString()).build());
+            }
+            return;
+        }
         if (refSchema == null) {
+            // IJPL-737: Report unresolvable $dynamicRef as a validation error instead of throwing.
             Error error = error().keyword(KeywordType.DYNAMIC_REF.getValue())
                     .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
                     .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
                     .arguments(schemaNode.asString()).build();
-            throw new InvalidSchemaRefException(error);
+            executionContext.addError(error);
+            return;
         }
         if (executionContext.incrementRefDepth() > 1000) {
             executionContext.decrementRefDepth();
@@ -123,13 +140,30 @@ public class DynamicRefValidator extends BaseKeywordValidator {
         // This is important because if we use same JsonSchemaFactory for creating multiple JSONSchema instances,
         // these schemas will be cached along with config. We have to replace the config for cached $ref references
         // with the latest config. Reset the config.
-        Schema refSchema = getSchemaRef(executionContext).getSchema();
+        Schema refSchema;
+        try {
+            refSchema = getSchemaRef(executionContext).getSchema();
+        } catch (SchemaException e) {
+            // IJPL-737: Treat $dynamicRef resolution failure as a validation error, not a fatal exception.
+            Error error = e.getError();
+            if (error != null) {
+                executionContext.addError(error);
+            } else {
+                executionContext.addError(error().keyword(KeywordType.DYNAMIC_REF.getValue())
+                        .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
+                        .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
+                        .arguments(schemaNode.asString()).build());
+            }
+            return;
+        }
         if (refSchema == null) {
+            // IJPL-737: Report unresolvable $dynamicRef as a validation error instead of throwing.
             Error error = error().keyword(KeywordType.DYNAMIC_REF.getValue())
                     .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
                     .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
                     .arguments(schemaNode.asString()).build();
-            throw new InvalidSchemaRefException(error);
+            executionContext.addError(error);
+            return;
         }
         if (node == null) {
             // Check for circular dependency

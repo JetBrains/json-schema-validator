@@ -19,7 +19,6 @@ package com.networknt.schema.keyword;
 import tools.jackson.databind.JsonNode;
 import com.networknt.schema.Error;
 import com.networknt.schema.ExecutionContext;
-import com.networknt.schema.InvalidSchemaRefException;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaException;
 import com.networknt.schema.SchemaRef;
@@ -184,13 +183,34 @@ public class RefValidator extends BaseKeywordValidator {
     @Override
     public void validate(ExecutionContext executionContext, JsonNode node, JsonNode rootNode, NodePath instanceLocation) {
 
-        Schema refSchema = this.schema.getSchema();
+        Schema refSchema;
+        try {
+            refSchema = this.schema.getSchema();
+        } catch (SchemaException e) {
+            // IJPL-737: Treat $ref resolution failure as a validation error, not a fatal exception.
+            // This allows validation to continue past unresolvable cross-document $ref references
+            // (e.g., in oneOf/anyOf branches), preserving errors found in other parts of the document.
+            // Catches both InvalidSchemaRefException (fragment not found) and SchemaException
+            // (external file not loadable, e.g., FileNotFoundException).
+            Error error = e.getError();
+            if (error != null) {
+                executionContext.addError(error);
+            } else {
+                executionContext.addError(error().keyword(KeywordType.REF.getValue())
+                        .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
+                        .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
+                        .arguments(schemaNode.asString()).build());
+            }
+            return;
+        }
         if (refSchema == null) {
+            // IJPL-737: Report unresolvable $ref as a validation error instead of throwing.
             Error error = error().keyword(KeywordType.REF.getValue())
                     .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
                     .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
                     .arguments(schemaNode.asString()).build();
-            throw new InvalidSchemaRefException(error);
+            executionContext.addError(error);
+            return;
         }
         if (executionContext.incrementRefDepth() > 1000) {
             executionContext.decrementRefDepth();
@@ -212,17 +232,34 @@ public class RefValidator extends BaseKeywordValidator {
 
     @Override
     public void walk(ExecutionContext executionContext, JsonNode node, JsonNode rootNode, NodePath instanceLocation, boolean shouldValidateSchema) {
-        
+
         // This is important because if we use same JsonSchemaFactory for creating multiple JSONSchema instances,
         // these schemas will be cached along with config. We have to replace the config for cached $ref references
         // with the latest config. Reset the config.
-        Schema refSchema = this.schema.getSchema();
+        Schema refSchema;
+        try {
+            refSchema = this.schema.getSchema();
+        } catch (SchemaException e) {
+            // IJPL-737: Treat $ref resolution failure as a validation error, not a fatal exception.
+            Error error = e.getError();
+            if (error != null) {
+                executionContext.addError(error);
+            } else {
+                executionContext.addError(error().keyword(KeywordType.REF.getValue())
+                        .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
+                        .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
+                        .arguments(schemaNode.asString()).build());
+            }
+            return;
+        }
         if (refSchema == null) {
+            // IJPL-737: Report unresolvable $ref as a validation error instead of throwing.
             Error error = error().keyword(KeywordType.REF.getValue())
                     .messageKey("internal.unresolvedRef").message("Reference {0} cannot be resolved")
                     .instanceLocation(instanceLocation).evaluationPath(executionContext.getEvaluationPath())
                     .arguments(schemaNode.asString()).build();
-            throw new InvalidSchemaRefException(error);
+            executionContext.addError(error);
+            return;
         }
         if (node == null) {
             // Check for circular dependency

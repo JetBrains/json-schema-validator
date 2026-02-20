@@ -154,9 +154,11 @@ class Issue619Test {
 
     @Test
     void uriThatPointsToSchemaThatDoesNotExistShouldFail_Ref() {
+        // IJPL-737: Unresolvable $ref during validation is now a validation error, not a fatal exception.
+        // This allows validation to continue past broken refs in oneOf/anyOf branches.
         Schema referencingNonexistentSchema = factory.getSchema("{ \"$ref\": \"resource:data/schema-that-does-not-exist.json#/definitions/something\" }");
 
-        assertThrows(SchemaException.class, () -> referencingNonexistentSchema.validate(one));
+        assertFalse(referencingNonexistentSchema.validate(one).isEmpty());
     }
 
     @Test
@@ -166,9 +168,11 @@ class Issue619Test {
 
     @Test
     void uriThatPointsToNodeThatDoesNotExistShouldFail_Ref() {
+        // IJPL-737: Unresolvable $ref during validation is now a validation error, not a fatal exception.
+        // This allows validation to continue past broken refs in oneOf/anyOf branches.
         Schema referencingNonexistentSchema = factory.getSchema("{ \"$ref\": \"resource:schema/issue619.json#/definitions/node-that-does-not-exist\" }");
 
-        assertThrows(SchemaException.class, () -> referencingNonexistentSchema.validate(one));
+        assertFalse(referencingNonexistentSchema.validate(one).isEmpty());
     }
 
     @Test
