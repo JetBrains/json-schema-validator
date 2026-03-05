@@ -115,6 +115,14 @@ public class RefValidator extends BaseKeywordValidator {
                 return schemaResource;
             }, schemaContext.getSchemaRegistryConfig().isCacheRefs()));
         }
+        /*
+         * RFC 6901, Section 5 distinguishes "#" from "#/":
+         *   "#"  (REF_CURRENT) — empty JSON Pointer → resolves to the root of the document.
+         *   "#/" — JSON Pointer "/" → resolves to the value of the empty-string key "" in root,
+         *          which is absent in most schemas, so the $ref is correctly unresolvable.
+         * "#/" is therefore NOT treated as an alias for root.  This is intentional and spec-correct;
+         * do not add a special case here.
+         */
         if (refValue.equals(REF_CURRENT)) {
             return new SchemaRef(
                     getSupplier(() -> parentSchema.findSchemaResourceRoot(),

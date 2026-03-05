@@ -194,6 +194,27 @@ class RefValidatorTest {
         assertTrue(schema.validate(inputData, InputFormat.JSON, OutputFormat.BOOLEAN));
     }
 
+    /**
+     * Verifies that {@code "$ref": "#/"} does NOT resolve to the root schema.
+     *
+     * Per RFC 6901 Section 5, the JSON Pointer "/" refers to the value of the empty-string key
+     * {@code ""} in the root object, not to the root itself.  Since most schemas have no such key,
+     * the $ref is unresolvable and validation must report an error.
+     *
+     * {@code "$ref": "#"} (without the trailing slash) is the correct way to reference the root.
+     */
+    @Test
+    void refHashSlashIsNotRoot() {
+        String schemaData = "{\r\n"
+                + "  \"type\": \"object\",\r\n"
+                + "  \"$ref\": \"#/\"\r\n"
+                + "}";
+        SchemaRegistry factory = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        Schema schema = factory.getSchema(schemaData);
+        List<Error> errors = schema.validate("{}", InputFormat.JSON);
+        assertFalse(errors.isEmpty(), "\"$ref\": \"#/\" must fail when the schema has no empty-string key");
+    }
+
     @Test
     void refSiblingIdInner201909AndAbove() {
         String schemaData = "{\r\n"
