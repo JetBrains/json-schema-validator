@@ -53,7 +53,9 @@ public class AdditionalPropertiesValidator extends BaseKeywordValidator {
             allowAdditionalProperties = true;
             additionalPropertiesSchema = schemaContext.newSchema(schemaLocation, schemaNode, parentSchema);
         } else {
-            allowAdditionalProperties = false;
+            // Non-boolean, non-object values (e.g. string "false") are invalid per JSON Schema spec.
+            // Treat them leniently: allow additional properties, matching the old IntelliJ validator behavior.
+            allowAdditionalProperties = true;
             additionalPropertiesSchema = null;
         }
 

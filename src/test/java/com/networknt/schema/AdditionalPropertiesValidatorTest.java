@@ -18,6 +18,7 @@ package com.networknt.schema;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -61,6 +62,108 @@ class AdditionalPropertiesValidatorTest {
         assertEquals("bar", message.getProperty());
     }
     
+    /**
+     * Tests that a string value "false" for additionalProperties (invalid per spec)
+     * is treated leniently: additional properties are allowed and no errors are reported.
+     */
+    @Test
+    void stringFalseAllowsAdditionalProperties() {
+        String schemaData = "{\r\n"
+                + "  \"type\": \"object\",\r\n"
+                + "  \"properties\": {\r\n"
+                + "    \"foo\": { \"type\": \"string\" }\r\n"
+                + "  },\r\n"
+                + "  \"additionalProperties\": \"false\"\r\n"
+                + "}";
+        SchemaRegistry factory = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        Schema schema = factory.getSchema(schemaData);
+        String inputData = "{\"foo\":\"hello\",\"bar\":\"world\"}";
+        List<Error> messages = schema.validate(inputData, InputFormat.JSON);
+        assertTrue(messages.isEmpty(),
+                "Expected no errors for additionalProperties: \"false\" (string), but got: " + messages);
+    }
+
+    /**
+     * Tests that a string value "true" for additionalProperties (invalid per spec)
+     * is treated leniently: additional properties are allowed and no errors are reported.
+     */
+    @Test
+    void stringTrueAllowsAdditionalProperties() {
+        String schemaData = "{\r\n"
+                + "  \"type\": \"object\",\r\n"
+                + "  \"properties\": {\r\n"
+                + "    \"foo\": { \"type\": \"string\" }\r\n"
+                + "  },\r\n"
+                + "  \"additionalProperties\": \"true\"\r\n"
+                + "}";
+        SchemaRegistry factory = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        Schema schema = factory.getSchema(schemaData);
+        String inputData = "{\"foo\":\"hello\",\"bar\":\"world\"}";
+        List<Error> messages = schema.validate(inputData, InputFormat.JSON);
+        assertTrue(messages.isEmpty(),
+                "Expected no errors for additionalProperties: \"true\" (string), but got: " + messages);
+    }
+
+    /**
+     * Regression: boolean false blocks additional properties.
+     */
+    @Test
+    void booleanFalseBlocksAdditionalProperties() {
+        String schemaData = "{\r\n"
+                + "  \"type\": \"object\",\r\n"
+                + "  \"properties\": {\r\n"
+                + "    \"foo\": { \"type\": \"string\" }\r\n"
+                + "  },\r\n"
+                + "  \"additionalProperties\": false\r\n"
+                + "}";
+        SchemaRegistry factory = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        Schema schema = factory.getSchema(schemaData);
+        String inputData = "{\"foo\":\"hello\",\"bar\":\"world\"}";
+        List<Error> messages = schema.validate(inputData, InputFormat.JSON);
+        assertFalse(messages.isEmpty(),
+                "Expected errors for additionalProperties: false (boolean), but got none");
+    }
+
+    /**
+     * Regression: boolean true allows additional properties.
+     */
+    @Test
+    void booleanTrueAllowsAdditionalProperties() {
+        String schemaData = "{\r\n"
+                + "  \"type\": \"object\",\r\n"
+                + "  \"properties\": {\r\n"
+                + "    \"foo\": { \"type\": \"string\" }\r\n"
+                + "  },\r\n"
+                + "  \"additionalProperties\": true\r\n"
+                + "}";
+        SchemaRegistry factory = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        Schema schema = factory.getSchema(schemaData);
+        String inputData = "{\"foo\":\"hello\",\"bar\":\"world\"}";
+        List<Error> messages = schema.validate(inputData, InputFormat.JSON);
+        assertTrue(messages.isEmpty(),
+                "Expected no errors for additionalProperties: true (boolean), but got: " + messages);
+    }
+
+    /**
+     * Regression: empty object schema allows additional properties.
+     */
+    @Test
+    void emptyObjectSchemaAllowsAdditionalProperties() {
+        String schemaData = "{\r\n"
+                + "  \"type\": \"object\",\r\n"
+                + "  \"properties\": {\r\n"
+                + "    \"foo\": { \"type\": \"string\" }\r\n"
+                + "  },\r\n"
+                + "  \"additionalProperties\": {}\r\n"
+                + "}";
+        SchemaRegistry factory = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
+        Schema schema = factory.getSchema(schemaData);
+        String inputData = "{\"foo\":\"hello\",\"bar\":\"world\"}";
+        List<Error> messages = schema.validate(inputData, InputFormat.JSON);
+        assertTrue(messages.isEmpty(),
+                "Expected no errors for additionalProperties: {} (empty object), but got: " + messages);
+    }
+
     /**
      * Tests that the message contains the correct values when additional properties
      * schema has a schema with type.
