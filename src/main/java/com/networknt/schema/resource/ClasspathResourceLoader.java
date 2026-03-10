@@ -66,16 +66,18 @@ public class ClasspathResourceLoader implements ResourceLoader {
                 name = name.substring(2);
             }
             String resource = name;
-            return () -> {
-                InputStream result = classLoader.getResourceAsStream(resource);
-                if (result == null) {
-                    result = classLoader.getResourceAsStream(resource.substring(1));
-                }
-                if (result == null) {
-                    throw new FileNotFoundException(iri);
-                }
-                return result;
-            };
+            // Check if the resource exists before returning a lambda.
+            // If not found, return null to allow fallthrough to other ResourceLoaders in the chain
+            // (e.g., IntelliJResourceLoader which can download from HTTP with caching).
+            InputStream probe = classLoader.getResourceAsStream(resource);
+            if (probe == null && resource.length() > 1) {
+                probe = classLoader.getResourceAsStream(resource.substring(1));
+            }
+            if (probe == null) {
+                return null;
+            }
+            InputStream found = probe;
+            return () -> found;
         }
         return null;
     }
