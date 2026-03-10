@@ -39,14 +39,34 @@ public class MetaSchemaIdResolver implements SchemaIdResolver {
         String absoluteIRIString = absoluteIRI != null ? absoluteIRI.toString() : null;
         if (absoluteIRIString != null) {
             if (absoluteIRIString.startsWith(HTTPS_JSON_SCHEMA_ORG_PREFIX)) {
-                return AbsoluteIri.of(CLASSPATH_PREFIX + absoluteIRIString.substring(24));
+                return resolveIfOnClasspath(absoluteIRIString.substring(24));
             } else if (absoluteIRIString.startsWith(HTTP_JSON_SCHEMA_ORG_PREFIX)) {
                 int endIndex = absoluteIRIString.length();
                 if (absoluteIRIString.charAt(endIndex - 1) == ANCHOR) {
                     endIndex = endIndex - 1;
                 }
-                return AbsoluteIri.of(CLASSPATH_PREFIX + absoluteIRIString.substring(23, endIndex));
+                return resolveIfOnClasspath(absoluteIRIString.substring(23, endIndex));
             }
+        }
+        return null;
+    }
+
+    /**
+     * Only remap to classpath: if the resource actually exists.
+     * If not, return null so the original HTTP URL passes through to other ResourceLoaders
+     * (e.g., ones that can download from HTTP with caching and redirect support).
+     */
+    private static AbsoluteIri resolveIfOnClasspath(String path) {
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        if (classLoader == null) {
+            classLoader = MetaSchemaIdResolver.class.getClassLoader();
+        }
+        if (classLoader.getResource(path) != null) {
+            return AbsoluteIri.of(CLASSPATH_PREFIX + path);
+        }
+        // Also try without leading slash
+        if (path.startsWith("/") && classLoader.getResource(path.substring(1)) != null) {
+            return AbsoluteIri.of(CLASSPATH_PREFIX + path);
         }
         return null;
     }
