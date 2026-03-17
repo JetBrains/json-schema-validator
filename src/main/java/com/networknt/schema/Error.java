@@ -16,6 +16,7 @@
 
 package com.networknt.schema;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -166,6 +167,7 @@ public class Error {
      *
      * @return list of property names from schema, or empty list if not available
      */
+    @JsonIgnore
     public java.util.List<String> getSchemaPropertyNames() {
         // parentSchemaNode is the full schema object containing "properties"
         JsonNode source = parentSchemaNode != null ? parentSchemaNode : schemaNode;
@@ -196,6 +198,7 @@ public class Error {
      *
      * @return list of expected type names, or empty list if not available
      */
+    @JsonIgnore
     public java.util.List<String> getExpectedTypes() {
         // For type errors, schemaNode is the keyword-level value (e.g., "string" or ["string", "number"])
         if (schemaNode != null) {
@@ -243,6 +246,7 @@ public class Error {
      * @param propertyName the property name to look up
      * @return the schema node for the property, or null if not found
      */
+    @JsonIgnore
     public JsonNode getPropertySchema(String propertyName) {
         if (propertyName == null) {
             return null;
