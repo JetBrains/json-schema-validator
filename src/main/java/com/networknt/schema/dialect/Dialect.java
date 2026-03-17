@@ -416,7 +416,10 @@ public class Dialect {
 
     private static String readText(JsonNode node, String field) {
         JsonNode fieldNode = node.get(field);
-        return fieldNode == null ? null : fieldNode.asString();
+        if (fieldNode == null || !fieldNode.isTextual()) {
+            return null;
+        }
+        return fieldNode.asString();
     }
 
     public String getId() {
@@ -474,12 +477,12 @@ public class Dialect {
                 logger.error("Error:", e);
                 throw (SchemaException) e.getTargetException();
             }
-            logger.warn("Could not load validator {}", keyword);
+            logger.warn("Could not load validator {} at {}", keyword, schemaLocation, e.getTargetException());
             throw new SchemaException(e.getTargetException());
         } catch (SchemaException e) {
             throw e;
         } catch (Exception e) {
-            logger.warn("Could not load validator {}", keyword);
+            logger.warn("Could not load validator {} at {}", keyword, schemaLocation, e);
             throw new SchemaException(e);
         }
     }
