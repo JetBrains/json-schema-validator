@@ -15,7 +15,9 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          server-id: github # Должно совпадать с id в pom.xml
+          server-id: github
+      - name: Set version from tag
+        run: mvn versions:set -DnewVersion=${GITHUB_REF_NAME#v} -DgenerateBackupPoms=false
       - name: Publish to GitHub Packages
         run: mvn --batch-mode deploy -DskipTests
         env:
